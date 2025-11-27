@@ -1,0 +1,32 @@
+# 后端服务
+fastapi
+uvicorn
+pydantic
+python-dotenv
+
+# 模型训练
+torch
+transformers
+scikit-learn
+pandas
+numpy
+
+# 数据处理
+nltk
+spacy
+
+# 爬虫
+scrapy
+requests
+
+# 数据库
+sqlalchemy
+psycopg2-binary
+
+# 客户端
+streamlit
+plotly
+
+# 工具
+logging
+pytest

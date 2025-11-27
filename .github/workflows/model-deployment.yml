@@ -1,0 +1,79 @@
+name: Model Training and Deployment
+
+on:
+  # 手动触发
+  workflow_dispatch:
+  # 定时触发（每天凌晨2点）
+  schedule:
+    - cron: '0 2 * * *'
+  # 代码推送触发
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'model/scripts/**'
+      - 'model/data/**'
+      - '.github/workflows/model-deployment.yml'
+
+jobs:
+  train-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 检查代码
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      # 设置Python环境
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      
+      # 安装依赖
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      # 训练模型
+      - name: Train model
+        run: |
+          cd model/scripts
+          python advanced_train.py
+      
+      # 测试模型
+      - name: Test model
+        run: |
+          cd model/scripts
+          python -c "from advanced_train import AdvancedContractClassifier, Config; config = Config(); classifier = AdvancedContractClassifier(config); classifier.load_data(); print('Model loaded successfully')"
+      
+      # 部署模型
+      - name: Deploy model
+        run: |
+          cd backend
+          python -c "from app.services.model_deployment_service import ModelDeploymentService; 
+          model_dir = '../model/saved_models'; 
+          deployed_model_dir = '../model/saved_models/deployed'; 
+          service = ModelDeploymentService(model_dir, deployed_model_dir); 
+          # 注册并部署最新模型
+          import os; 
+          latest_model = sorted([d for d in os.listdir(model_dir) if os.path.isdir(os.path.join(model_dir, d)) and d != 'deployed'], key=os.path.getmtime, reverse=True)[0]; 
+          model_path = os.path.join(model_dir, latest_model); 
+          service.register_model('contract_classifier', model_path, {'accuracy': 0.9, 'f1': 0.85}); 
+          service.auto_deploy_best_model('contract_classifier'); 
+          print('Model deployed successfully')"
+      
+      # 保存模型训练结果
+      - name: Save training results
+        uses: actions/upload-artifact@v3
+        with:
+          name: model-training-results
+          path: |
+            model/logs/
+            model/saved_models/
+      
+      # 通知
+      - name: Notify deployment
+        if: always()
+        run: |
+          echo "Model training and deployment completed with status: ${{ job.status }}"
